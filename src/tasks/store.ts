@@ -16,7 +16,7 @@ export async function loadTasks(): Promise<TasksFile> {
       timezone: "Europe/Paris",
       tasks: [],
     };
-    await saveTasks(initialFile);
+    saveTasks(initialFile);
     return initialFile;
   }
 
@@ -39,20 +39,9 @@ export async function loadTasks(): Promise<TasksFile> {
  * Saves the tasks file atomically.
  * Uses a promise queue to serialize writes.
  */
-export async function saveTasks(data: TasksFile): Promise<void> {
-  // Serialize saves
-  savePromise = savePromise.then(async () => {
-    const tmpFile = `${TASKS_FILE}.tmp`;
-    const content = JSON.stringify(data, null, 2);
-
-    // Write to temp file first
-    fs.writeFileSync(tmpFile, content, "utf8");
-
-    // Rename to actual file (atomic on most filesystems)
-    fs.renameSync(tmpFile, TASKS_FILE);
-  });
-
-  return savePromise;
+export function saveTasks(data: TasksFile): void {
+  const content = JSON.stringify(data, null, 2);
+  fs.writeFileSync(TASKS_FILE, content, "utf8");
 }
 
 /**
@@ -61,7 +50,7 @@ export async function saveTasks(data: TasksFile): Promise<void> {
 export async function addTask(task: Task): Promise<void> {
   const data = await loadTasks();
   data.tasks.push(task);
-  await saveTasks(data);
+  saveTasks(data);
 }
 
 /**
@@ -79,7 +68,7 @@ export async function updateTask(
   }
 
   data.tasks[index] = { ...data.tasks[index], ...updates };
-  await saveTasks(data);
+  saveTasks(data);
   return data.tasks[index];
 }
 
@@ -120,7 +109,7 @@ export async function cancelTask(taskId: string): Promise<Task | null> {
 
   task.status = "cancelled";
   task.updatedAtIso = new Date().toISOString();
-  await saveTasks(data);
+  saveTasks(data);
   return task;
 }
 
@@ -143,7 +132,7 @@ export async function markReminderSent(
     reminder.sentAtIso = new Date().toISOString();
   }
 
-  await saveTasks(data);
+  saveTasks(data);
 }
 
 /**
@@ -166,7 +155,7 @@ export async function markReminderSkipped(
     reminder.skippedReason = reason;
   }
 
-  await saveTasks(data);
+  saveTasks(data);
 }
 
 /**
@@ -255,7 +244,7 @@ export async function cleanupOldRemindersAndTasks(nowIsoUtc: string): Promise<Cl
 
   // Save once if there were any changes
   if (result.removedTaskIds.length > 0 || result.skipped.length > 0) {
-    await saveTasks(data);
+    saveTasks(data);
   }
 
   // Log end summary
@@ -281,6 +270,6 @@ export async function removeTask(taskId: string): Promise<boolean> {
   }
 
   data.tasks.splice(index, 1);
-  await saveTasks(data);
+  saveTasks(data);
   return true;
 }
