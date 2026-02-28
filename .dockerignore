@@ -1,0 +1,45 @@
+# Dependencies
+node_modules
+bun.lock
+
+# Environment files (should be provided at runtime)
+.env
+
+# Task data (should be mounted or created at runtime)
+tasks.json
+tasks/
+session.json
+
+# Examples (not needed in production)
+examples/
+
+# Git
+.git
+.gitignore
+
+# IDE and editor files
+.idea
+.vscode
+*.swp
+*.swo
+
+# Build outputs
+dist
+build
+*.tsbuildinfo
+
+# Logs
+logs
+*.log
+
+# Temporary files
+tmp
+temp
+*.tmp
+
+# Diagnostic files
+.diagnostics.log
+
+# Documentation (optional, not needed in container)
+*.md
+!README.md

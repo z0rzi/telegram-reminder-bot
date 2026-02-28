@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+bun.lock
+
+# Environment variables (never commit secrets)
+.env
+.env.local
+.env.*.local
+
+# Task data (contains user data, should never be committed)
+tasks.json
+tasks/session.json
+tasks/*.json
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Diagnostic files
+.diagnostics.log
+
+# Examples (reference code only)
+examples/

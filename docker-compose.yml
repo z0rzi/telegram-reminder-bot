@@ -1,0 +1,12 @@
+version: "3.0"
+
+services:
+  telegram-reminder-bot:
+    build: .
+    container_name: telegram-reminder-bot
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    restart: always
+    network_mode: host
