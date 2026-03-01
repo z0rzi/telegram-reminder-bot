@@ -11,6 +11,6 @@ services:
       - GOOGLE_SERVICE_ACCOUNT_PATH=${GOOGLE_SERVICE_ACCOUNT_PATH}
       - GOOGLE_CALENDAR_ID=${GOOGLE_CALENDAR_ID}
     volumes:
-      - ./tasks.json:/app/tasks.json
+      - ./tasks.json:/app/tasks.json:rw
     restart: always
     network_mode: host
