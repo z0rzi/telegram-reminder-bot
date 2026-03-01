@@ -7,6 +7,7 @@ import { evaluateSnippet } from "../ai/evalSnippet";
 import { DateTime } from "luxon";
 import { computeReminders } from "../tasks/reminders";
 import { rescheduleTask, getSkippedRemindersMessage } from "../tasks/scheduler";
+import { updateCalendarEvent } from "../integrations/googleCalendar";
 import type { ReminderKind } from "../tasks/schema";
 
 // State for reschedule flow
@@ -147,6 +148,12 @@ export async function processReschedule(
     if (!updatedTask) {
       await ctx.reply("Task not found.");
       return true;
+    }
+
+    try {
+      await updateCalendarEvent(updatedTask);
+    } catch (e) {
+      console.error("Failed to update Google Calendar event:", e);
     }
 
     // Reschedule in scheduler

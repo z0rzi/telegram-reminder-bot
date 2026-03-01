@@ -2,7 +2,7 @@ import { Context, Markup } from "telegraf";
 import { getScheduledTasks, cancelTask } from "../tasks/store";
 import { formatForUserNoYear } from "../tasks/time";
 import { cancelTimeoutsForTask } from "../tasks/scheduler";
-import type { Task } from "../tasks/schema";
+import { deleteCalendarEvent } from "../integrations/googleCalendar";
 
 /**
  * Handles the /cancel command.
@@ -49,6 +49,12 @@ export async function handleCancelCallback(
 
   // Cancel scheduled timeouts
   cancelTimeoutsForTask(taskId);
+
+  try {
+    await deleteCalendarEvent(task);
+  } catch (e) {
+    console.error("Failed to delete Google Calendar event:", e);
+  }
 
   const dueFormatted = formatForUserNoYear(task.dueAtIso);
   await ctx.editMessageText(

@@ -2,6 +2,8 @@
 node_modules/
 bun.lock
 
+google-service-account.json
+
 # Environment variables (never commit secrets)
 .env
 .env.local

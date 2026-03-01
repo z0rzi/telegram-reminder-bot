@@ -30,6 +30,7 @@ export type Task = {
   updatedAtIso: string;
   status: TaskStatus;
   reminders: Reminder[]; // reminders planned
+  googleCalendarEventId?: string; // external calendar event id, if synced
 };
 
 /**

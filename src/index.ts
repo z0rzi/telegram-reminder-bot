@@ -14,11 +14,12 @@ import {
     processReschedule,
 } from "./commands/reschedule";
 import env from "./env";
+import { createCalendarEvent } from "./integrations/googleCalendar";
 import { transcribeAudio } from "./openai/whisper";
 import { computeReminders } from "./tasks/reminders";
 import { getSkippedRemindersMessage, initializeScheduler, setReminderSender } from "./tasks/scheduler";
 import { type ReminderKind, type Task } from "./tasks/schema";
-import { addTask } from "./tasks/store";
+import { addTask, updateTask } from "./tasks/store";
 import { formatForUserRelative, getNowUtc } from "./tasks/time";
 import { downloadVoiceFile } from "./telegram/download";
 
@@ -106,6 +107,19 @@ async function processTaskInput(ctx: Context, rawText: string): Promise<void> {
 
     // Step 7: Save to store
     await addTask(task);
+
+    // Step 7b: Create Google Calendar event (non-blocking if it fails)
+    try {
+      const googleEventId = await createCalendarEvent(task);
+      if (googleEventId) {
+        await updateTask(task.id, {
+          googleCalendarEventId: googleEventId,
+          updatedAtIso: getNowUtc(),
+        });
+      }
+    } catch (e) {
+      console.error("Failed to create Google Calendar event:", e);
+    }
 
     // Step 8: Schedule reminders (those not skipped)
     for (const reminder of reminders) {
