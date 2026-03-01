@@ -26,7 +26,6 @@ import { downloadVoiceFile } from "./telegram/download";
 const TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN");
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
-let isShuttingDown = false;
 
 /**
  * Creates a ReminderSender from the bot instance.
@@ -295,10 +294,6 @@ async function main() {
 
   // Attach error handler to catch launch failures
   launchPromise.catch((err) => {
-    if (isShuttingDown) {
-      console.log("Polling stopped during shutdown");
-      return;
-    }
     console.error("Failed to launch polling:", err);
     console.error("Hint: Check network/proxy/firewall settings. Telegram API may be unreachable.");
     process.exit(1);
@@ -334,19 +329,6 @@ bot.catch((err, ctx) => {
   if (ctx && ctx.from) {
     ctx.reply("An error occurred while processing your request.").catch(console.error);
   }
-});
-
-// Enable graceful stop
-process.on("SIGINT", () => {
-  console.log("Shutting down...");
-  isShuttingDown = true;
-  bot.stop("SIGINT");
-});
-
-process.on("SIGTERM", () => {
-  console.log("Shutting down...");
-  isShuttingDown = true;
-  bot.stop("SIGTERM");
 });
 
 // Run main function - this will initialize everything
