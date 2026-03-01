@@ -13,6 +13,7 @@ RUN bun install
 # Copy source code
 COPY ./src /app/src
 COPY ./tsconfig.json /app/tsconfig.json
+COPY ./google-service-account.json /app/google-service-account.json
 
 # Create tasks directory for persistence (empty initially)
 # tasks.json will be created at runtime if it doesn't exist
