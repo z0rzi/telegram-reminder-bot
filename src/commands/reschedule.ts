@@ -1,6 +1,6 @@
 import { Context, Markup } from "telegraf";
 import { getScheduledTasks, updateTask, getTask } from "../tasks/store";
-import { formatForUser, formatForUserRelative, getNowUtc } from "../tasks/time";
+import { formatForUserNoYear, formatForUserRelative, getNowUtc } from "../tasks/time";
 import { extractIntent } from "../ai/intent";
 import { generateDateSnippet } from "../ai/dateSnippet";
 import { evaluateSnippet } from "../ai/evalSnippet";
@@ -30,9 +30,13 @@ export async function handleReschedule(ctx: Context) {
     return;
   }
 
-  const buttons = tasks.map((task, i) => {
-    const dueFormatted = formatForUser(task.dueAtIso);
-    const label = `${i + 1}) ${task.message.substring(0, 20)} (${dueFormatted})`;
+  const sorted = [...tasks].sort(
+    (a, b) => Date.parse(a.dueAtIso) - Date.parse(b.dueAtIso),
+  );
+
+  const buttons = sorted.map((task) => {
+    const dueFormatted = formatForUserNoYear(task.dueAtIso);
+    const label = `${dueFormatted} — ${task.message.substring(0, 30)}`;
     return [Markup.button.callback(`📅 ${label}`, `resched:${task.id}`)];
   });
 
@@ -68,7 +72,7 @@ export async function handleRescheduleStart(
 
   await ctx.editMessageText(
     `Rescheduling: ${task.message}\n\n` +
-      `Current due: ${formatForUser(task.dueAtIso)}\n\n` +
+      `Current due: ${formatForUserNoYear(task.dueAtIso)}\n\n` +
       `Please send me the new date/time (text or voice).`,
   );
 }

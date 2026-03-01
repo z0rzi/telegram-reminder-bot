@@ -23,7 +23,11 @@ export async function loadTasks(): Promise<TasksFile> {
   try {
     const content = fs.readFileSync(TASKS_FILE, "utf8");
     const data = JSON.parse(content) as TasksFile;
-    return data;
+    const { data: normalized, changed } = normalizeTasksFile(data);
+    if (changed) {
+      saveTasks(normalized);
+    }
+    return normalized;
   } catch (e) {
     console.error("Failed to load tasks.json:", e);
     // Return empty tasks on error
@@ -33,6 +37,23 @@ export async function loadTasks(): Promise<TasksFile> {
       tasks: [],
     };
   }
+}
+
+function normalizeTasksFile(data: TasksFile): { data: TasksFile; changed: boolean } {
+  let changed = false;
+
+  for (const task of data.tasks) {
+    const filtered = task.reminders.filter(
+      (reminder) => reminder.kind === "oneHourBefore" || reminder.kind === "atTime",
+    );
+
+    if (filtered.length !== task.reminders.length) {
+      task.reminders = filtered;
+      changed = true;
+    }
+  }
+
+  return { data, changed };
 }
 
 /**

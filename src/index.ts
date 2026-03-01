@@ -1,31 +1,32 @@
-import { Telegraf, Context } from "telegraf";
+import { DateTime } from "luxon";
 import { nanoid } from "nanoid";
-import env from "./env";
-import { downloadVoiceFile } from "./telegram/download";
-import { transcribeAudio } from "./openai/whisper";
-import { extractIntent } from "./ai/intent";
+import { Context, Telegraf } from "telegraf";
 import { generateDateSnippet } from "./ai/dateSnippet";
 import { evaluateSnippet } from "./ai/evalSnippet";
-import { DateTime } from "luxon";
-import { type Task, type ReminderKind } from "./tasks/schema";
-import { addTask } from "./tasks/store";
-import { getNowUtc, formatForUser, formatForUserRelative } from "./tasks/time";
-import { computeReminders } from "./tasks/reminders";
-import { initializeScheduler, setReminderSender, getSkippedRemindersMessage } from "./tasks/scheduler";
-import { handleList } from "./commands/list";
-import { handleHelp } from "./commands/help";
+import { extractIntent } from "./ai/intent";
 import { handleCancel, handleCancelCallback } from "./commands/cancel";
+import { handleHelp } from "./commands/help";
+import { handleList } from "./commands/list";
 import {
-  handleReschedule,
-  handleRescheduleStart,
-  processReschedule,
-  hasPendingReschedule,
+    handleReschedule,
+    handleRescheduleStart,
+    hasPendingReschedule,
+    processReschedule,
 } from "./commands/reschedule";
+import env from "./env";
+import { transcribeAudio } from "./openai/whisper";
+import { computeReminders } from "./tasks/reminders";
+import { getSkippedRemindersMessage, initializeScheduler, setReminderSender } from "./tasks/scheduler";
+import { type ReminderKind, type Task } from "./tasks/schema";
+import { addTask } from "./tasks/store";
+import { formatForUserRelative, getNowUtc } from "./tasks/time";
+import { downloadVoiceFile } from "./telegram/download";
 
 // Initialize environment
 const TELEGRAM_BOT_TOKEN = env("TELEGRAM_BOT_TOKEN");
 
 const bot = new Telegraf(TELEGRAM_BOT_TOKEN);
+let isShuttingDown = false;
 
 /**
  * Creates a ReminderSender from the bot instance.
@@ -294,6 +295,10 @@ async function main() {
 
   // Attach error handler to catch launch failures
   launchPromise.catch((err) => {
+    if (isShuttingDown) {
+      console.log("Polling stopped during shutdown");
+      return;
+    }
     console.error("Failed to launch polling:", err);
     console.error("Hint: Check network/proxy/firewall settings. Telegram API may be unreachable.");
     process.exit(1);
@@ -334,11 +339,13 @@ bot.catch((err, ctx) => {
 // Enable graceful stop
 process.on("SIGINT", () => {
   console.log("Shutting down...");
+  isShuttingDown = true;
   bot.stop("SIGINT");
 });
 
 process.on("SIGTERM", () => {
   console.log("Shutting down...");
+  isShuttingDown = true;
   bot.stop("SIGTERM");
 });
 

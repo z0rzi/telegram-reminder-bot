@@ -31,6 +31,29 @@ export function formatForUser(isoString: string): string {
 }
 
 /**
+ * Formats an ISO datetime without the year.
+ * Shows: dd/MM HH:mm
+ */
+export function formatForUserNoYear(isoString: string): string {
+  const now = getNowParis();
+  const dt = DateTime.fromISO(isoString).setZone(TIMEZONE);
+  const time = dt.toFormat("HH:mm");
+
+  if (dt.hasSame(now, "day")) {
+    return `today ${time}`;
+  }
+
+  const tomorrow = now.plus({ days: 1 });
+  if (dt.hasSame(tomorrow, "day")) {
+    return `tomorrow ${time}`;
+  }
+
+  const weekday = dt.toFormat("ccc");
+  const date = dt.toFormat("dd/MM");
+  return `${weekday} ${date} ${time}`;
+}
+
+/**
  * Formats an ISO datetime for display with relative terms (today/tomorrow).
  * - If due date is the same local day as now (Europe/Paris) => "today at HH:mm"
  * - If due date is the next local day => "tomorrow at HH:mm"

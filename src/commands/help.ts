@@ -1,4 +1,4 @@
-import { Context } from "telegraf";
+import { Context, Markup } from "telegraf";
 
 /**
  * Handles the /help command.
@@ -12,5 +12,8 @@ export async function handleHelp(ctx: Context) {
 /cancel - Cancel a scheduled task
 /reschedule - Reschedule a task`;
 
-  await ctx.reply(helpMessage);
+  await ctx.reply(helpMessage, {
+    reply_markup: Markup.keyboard(["/help", "/list", "/cancel", "/reschedule"])
+      .reply_markup,
+  });
 }

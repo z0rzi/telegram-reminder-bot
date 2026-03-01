@@ -1,5 +1,14 @@
+import { DateTime } from "luxon";
 import { type Task, type ReminderKind } from "./schema";
-import { getDelayMs, formatForUser, getNowUtc } from "./time";
+import {
+  getDelayMs,
+  getNowUtc,
+  getNowParis,
+  formatDateOnly,
+  formatTimeOnly,
+  toParisDateTime,
+  TIMEZONE,
+} from "./time";
 import { markReminderSent, getTask, removeTask, cleanupOldRemindersAndTasks } from "./store";
 
 // Maximum delay for setTimeout (24 hours to avoid 32-bit overflow)
@@ -22,6 +31,8 @@ type ScheduledTimeout = {
 };
 
 const scheduledTimeouts = new Map<string, ScheduledTimeout>();
+
+let dailySummaryTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // Reference to reminder sender
 let reminderSender: ReminderSender | null = null;
@@ -154,17 +165,12 @@ async function sendReminder(taskId: string, kind: ReminderKind) {
   }
 
   let message = "";
-  const dueFormatted = formatForUser(task.dueAtIso);
-
   switch (kind) {
-    case "dayBefore2100":
-      message = `Reminder (tomorrow at 21:00): ${task.message} — due ${dueFormatted}`;
-      break;
     case "oneHourBefore":
-      message = `Reminder (in 1 hour): ${task.message} — due ${dueFormatted}`;
+      message = `🔔 In 1 hour 🔔\n${task.message}`;
       break;
     case "atTime":
-      message = `Reminder: ${task.message}`;
+      message = `🔔 NOW 🔔\n${task.message}`;
       break;
   }
 
@@ -261,7 +267,94 @@ export async function initializeScheduler(sender: ReminderSender): Promise<void>
     rescheduleTask(task);
   }
 
+  scheduleDailySummary();
+
   console.log(`[Scheduler] Initialization complete`);
+}
+
+function getNextDailySummaryRun(nowParis: DateTime): DateTime {
+  const target = nowParis.set({
+    hour: 21,
+    minute: 0,
+    second: 0,
+    millisecond: 0,
+  });
+
+  if (nowParis.toMillis() >= target.toMillis()) {
+    return target.plus({ days: 1 });
+  }
+
+  return target;
+}
+
+async function sendDailySummary(): Promise<void> {
+  if (!reminderSender) {
+    console.error("[Scheduler] No reminder sender available for daily summary");
+    return;
+  }
+
+  const { getScheduledTasks } = await import("./store");
+  const tasks = await getScheduledTasks();
+  const nowParis = getNowParis();
+  const tomorrow = nowParis.plus({ days: 1 }).startOf("day");
+  const tomorrowLabel = formatDateOnly(tomorrow.toISO() as string);
+  const grouped = new Map<number, Task[]>();
+
+  for (const task of tasks) {
+    if (!task.chatId) {
+      continue;
+    }
+
+    const dueParis = toParisDateTime(task.dueAtIso);
+    if (!dueParis.hasSame(tomorrow, "day")) {
+      continue;
+    }
+
+    const list = grouped.get(task.chatId) ?? [];
+    list.push(task);
+    grouped.set(task.chatId, list);
+  }
+
+  if (grouped.size === 0) {
+    console.log("[Scheduler] No reminders due tomorrow; daily summary not sent");
+    return;
+  }
+
+  for (const [chatId, list] of grouped.entries()) {
+    list.sort((a, b) => Date.parse(a.dueAtIso) - Date.parse(b.dueAtIso));
+    const lines = list.map((task) => `- ${formatTimeOnly(task.dueAtIso)} — ${task.message}`);
+    const message = `Reminders for tomorrow (${tomorrowLabel}):\n${lines.join("\n")}`;
+
+    try {
+      await reminderSender.sendMessage(chatId, message);
+      console.log(
+        `[Scheduler] Sent daily summary to chat ${chatId} (${list.length} reminders)`,
+      );
+    } catch (e) {
+      console.error(`[Scheduler] Failed to send daily summary: ${e}`);
+    }
+  }
+}
+
+function scheduleDailySummary(): void {
+  if (dailySummaryTimeout) {
+    clearTimeout(dailySummaryTimeout);
+  }
+
+  const nowParis = getNowParis();
+  const nextRun = getNextDailySummaryRun(nowParis);
+  const delayMs = nextRun.toMillis() - nowParis.toMillis();
+  const inMinutes = Math.round(delayMs / 1000 / 60);
+
+  dailySummaryTimeout = setTimeout(async () => {
+    await sendDailySummary();
+    scheduleDailySummary();
+  }, delayMs);
+
+  console.log(
+    `[Scheduler] Daily summary scheduled for ${nextRun.setZone(TIMEZONE).toISO()} ` +
+    `(in ${inMinutes} minutes)`,
+  );
 }
 
 /**

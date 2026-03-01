@@ -1,7 +1,7 @@
 /**
  * Reminder kinds for a task
  */
-export type ReminderKind = "dayBefore2100" | "oneHourBefore" | "atTime";
+export type ReminderKind = "oneHourBefore" | "atTime";
 
 /**
  * Individual reminder for a task
@@ -29,7 +29,7 @@ export type Task = {
   createdAtIso: string;
   updatedAtIso: string;
   status: TaskStatus;
-  reminders: Reminder[]; // 3 reminders planned
+  reminders: Reminder[]; // reminders planned
 };
 
 /**

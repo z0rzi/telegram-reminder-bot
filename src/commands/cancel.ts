@@ -1,6 +1,6 @@
 import { Context, Markup } from "telegraf";
 import { getScheduledTasks, cancelTask } from "../tasks/store";
-import { formatForUser } from "../tasks/time";
+import { formatForUserNoYear } from "../tasks/time";
 import { cancelTimeoutsForTask } from "../tasks/scheduler";
 import type { Task } from "../tasks/schema";
 
@@ -16,9 +16,13 @@ export async function handleCancel(ctx: Context) {
     return;
   }
 
-  const buttons = tasks.map((task, i) => {
-    const dueFormatted = formatForUser(task.dueAtIso);
-    const label = `${i + 1}) ${task.message.substring(0, 25)} (${dueFormatted})`;
+  const sorted = [...tasks].sort(
+    (a, b) => Date.parse(a.dueAtIso) - Date.parse(b.dueAtIso),
+  );
+
+  const buttons = sorted.map((task) => {
+    const dueFormatted = formatForUserNoYear(task.dueAtIso);
+    const label = `${dueFormatted} — ${task.message.substring(0, 30)}`;
     return [Markup.button.callback(`❌ ${label}`, `cancel:${task.id}`)];
   });
 
@@ -46,8 +50,8 @@ export async function handleCancelCallback(
   // Cancel scheduled timeouts
   cancelTimeoutsForTask(taskId);
 
-  const dueFormatted = formatForUser(task.dueAtIso);
+  const dueFormatted = formatForUserNoYear(task.dueAtIso);
   await ctx.editMessageText(
-    `❌ Cancelled: ${task.message} (was due ${dueFormatted})`,
+    `❌ Cancelled: ${dueFormatted} — ${task.message}`,
   );
 }
