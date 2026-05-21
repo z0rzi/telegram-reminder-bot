@@ -13,6 +13,14 @@ export const aiModels = {
 
 export type AiModels = (typeof aiModels)[keyof typeof aiModels];
 
+export const defaultFallbackChain: AiModels[] = [
+  aiModels["Gemini Flash 2.0"],
+  aiModels["Claude 3.7 Sonnet"],
+  aiModels["GPT 4.1"],
+];
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 export type AiOptions = {
   model?: AiModels;
 };
@@ -51,31 +59,52 @@ export type OpenRouterResponse = {
   };
 };
 
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 5000;
+
 /**
- * Sends a chat completion request to OpenRouter.
+ * Sends a chat completion request to OpenRouter with model fallbacks and retry logic.
  */
 export async function askAi(messages: AiMessage[], options?: AiOptions) {
+  const models = options?.model
+    ? [options.model, ...defaultFallbackChain.filter((m) => m !== options.model)]
+    : defaultFallbackChain;
+
   const fetchParams = {
-    model: options?.model ?? aiModels["Gemini Flash 2.0"],
-    messages: messages,
+    models,
+    messages,
   };
 
-  const res = (await fetch(
-    "https://openrouter.ai/api/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: "Bearer " + OPENROUTER_API_KEY,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(fetchParams),
-    },
-  ).then((res) => res.json())) as OpenRouterResponse;
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const res = (await fetch(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            Authorization: "Bearer " + OPENROUTER_API_KEY,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(fetchParams),
+        },
+      ).then((res) => res.json())) as OpenRouterResponse;
 
-  if (!res.choices || !res.choices[0]?.message?.content) {
-    console.error("No content in response:", JSON.stringify(res, null, 2));
-    throw new Error("No content in OpenRouter response");
+      if (res.choices?.[0]?.message?.content) {
+        return res.choices[0].message.content;
+      }
+
+      console.warn(
+        `Attempt ${attempt}/${MAX_RETRIES} - No content in response:`,
+        JSON.stringify(res, null, 2),
+      );
+    } catch (err) {
+      console.warn(`Attempt ${attempt}/${MAX_RETRIES} - Fetch error:`, err);
+    }
+
+    if (attempt < MAX_RETRIES) {
+      await sleep(RETRY_DELAY_MS);
+    }
   }
 
-  return res.choices[0].message.content;
+  throw new Error("No content in OpenRouter response after all retries");
 }
