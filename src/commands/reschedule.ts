@@ -102,7 +102,7 @@ export async function processReschedule(
 
     if (intent.timeInstruction === "unspecified") {
       await ctx.reply(
-        "I couldn't understand the new date/time. Please try again with a clearer time.",
+        "That doesn't look like a valid date/time... reschedule cancelled.",
       );
       return true;
     }

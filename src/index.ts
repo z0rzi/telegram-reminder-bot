@@ -55,7 +55,7 @@ async function processTaskInput(ctx: Context, rawText: string): Promise<void> {
 
     if (intent.timeInstruction === "unspecified") {
       await ctx.reply(
-        "I couldn't understand the date/time. Please provide when you want to be reminded.",
+        "That doesn't look like a proper reminder... I'm just going to ignore it.",
       );
       return;
     }
